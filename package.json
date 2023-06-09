@@ -1,0 +1,30 @@
+{
+  "name": "map_image_generator",
+  "version": "1.0.0",
+  "description": "api service for generating images from map with some info",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "kingofday.b@gmail.com",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "canvas": "^2.11.2",
+    "express": "^4.18.2",
+    "html-to-image": "^1.11.11",
+    "install": "^0.13.0",
+    "jsdom": "^22.1.0",
+    "mapbox-gl": "^2.15.0",
+    "npm": "^9.6.7",
+    "ol": "^7.4.0",
+    "puppeteer": "^20.5.0",
+    "resize-observer-polyfill": "^1.5.1",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.22.1",
+    "@babel/plugin-transform-runtime": "^7.22.4",
+    "@babel/preset-env": "^7.22.4"
+  }
+}
