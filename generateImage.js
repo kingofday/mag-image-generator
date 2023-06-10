@@ -76,24 +76,38 @@ const generateImage = async ({
                     }
                     map.addSource(`source-${idx}`, geoJson);
                     if (sery.icon) {
-                        map.addLayer({
-                            id: `dot-layer-${idx}`,
-                            type: 'circle',
-                            source: `source-${idx}`,
-                            paint: {
-                                'circle-color': sery.color,
-                                'circle-radius': 6
-                            }
-                        });
+                        // map.addLayer({
+                        //     id: `dot-layer-${idx}`,
+                        //     type: 'circle',
+                        //     source: `source-${idx}`,
+                        //     paint: {
+                        //         'circle-color': sery.color,
+                        //         'circle-radius': 3
+                        //     }
+                        // });
                         map.addLayer({
                             id: `icon-layer-${idx}`,
                             type: 'symbol',
                             source: `source-${idx}`,
                             layout: {
                                 'icon-image': "antenna",
-                                'icon-size': 0.4,
+                                'icon-size': 0.1,
                                 'icon-anchor': 'center',
                                 'icon-allow-overlap': true,
+                                "icon-rotation-alignment": "map",
+                                "icon-rotation": {
+                                  type: "categorical",
+                                  property: "angle",  // property name that stores the angle
+                                  stops: [
+                                    [0,   0],        // 0 degrees 
+                                    [30, 30],
+                                    [60, 60],
+                                    [90, 90],       
+                                    [120, 120],
+                                    [150, 150],
+                                    [180, 180]
+                                  ]
+                                }
                             }
                         });
                     }
@@ -130,10 +144,10 @@ const generateImage = async ({
 
     // Save image to file
     const filename = `${uuidv4().replace("-", "_")}.png`;
-    fs.writeFileSync(`./public/${filename}`, screenshot);
+    fs.writeFileSync(`./public/exports/${filename}`, screenshot);
 
     // Return URL to saved image
-    const imageUrl = `${config.baseUrl}/${filename}`;
+    const imageUrl = `${config.baseUrl}/exports/${filename}`;
     res.json({ imageUrl });
 
     // Close headless browser
