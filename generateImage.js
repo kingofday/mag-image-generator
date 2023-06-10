@@ -2,7 +2,7 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const config = require('./config');
-
+//const antenna = require("./public/assets/antenna.svg")
 const generateImage = async ({
     data,
     res,
@@ -14,7 +14,7 @@ const generateImage = async ({
 
     // Load map in headless browser
     await page.goto(`file://${__dirname}/template/map.html`);
-
+    const svgString = fs.readFileSync(__dirname + "/public/assets/antenna.svg", "utf8");
     page.on('console', message => {
         console.log(`${message.text()}`);
     });
@@ -25,7 +25,7 @@ const generateImage = async ({
     });
     await page.waitForSelector('#wrapper');
     await page.waitForSelector('#legends');
-    await page.evaluate((series, baseUrl, minMax, center, token) => {
+    await page.evaluate((series, baseUrl, minMax, center, token, svgString) => {
         return new Promise((resolve, reject) => {
             //=== adding legends
             let legends = '';
@@ -42,13 +42,25 @@ const generateImage = async ({
                 zoom: 8.5
             });
             map.on('load', async () => {
+
                 await new Promise((imgRes) => {
-                    map.loadImage(`${baseUrl}/assets/antenna.png`, (error, image) => {
-                        if (error) console.log(error);
-                        map.addImage("antenna", image);
+                    let img = new Image(20, 20)
+                    img.onload = () => {
+                        map.addImage("antenna", img);
                         imgRes();
-                    });
+                    }
+                    img.onerror = err => console.log("load antenna " + JSON.stringify(err));
+                    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
+                    // map.loadImage(`${baseUrl}/assets/antenna.svg`, (error, image) => {
+                    //     if (error) console.log(error);
+                    //     map.addImage("antenna", image);
+                    //     imgRes();
+                    // });
+                }, reason => {
+                    console.log(reason)
                 });
+
+                console.log("=== loaded")
                 let idx = 0;
                 let coloredSeriesCount = 0;
                 let allColoredSeriesCount = series.filter(x => !x.icon).length;
@@ -60,17 +72,18 @@ const generateImage = async ({
                             "features": []
                         }
                     };
-                    for (let point of sery.coordinates) {
+                    for (let point of sery.points) {
                         geoJson.data.features.push({
                             "type": "Feature",
                             "properties": {
                                 label: sery.label,
-                                icon: point.icon,
-                                color: point.color
+                                icon: sery.icon,
+                                color: sery.color,
+                                angle: point.angle
                             },
                             "geometry": {
                                 "type": "Point",
-                                "coordinates": point
+                                "coordinates": point.coord
                             }
                         })
                     }
@@ -91,23 +104,10 @@ const generateImage = async ({
                             source: `source-${idx}`,
                             layout: {
                                 'icon-image': "antenna",
-                                'icon-size': 0.1,
-                                'icon-anchor': 'center',
+                                'icon-size': 1,
+                                'icon-anchor': 'bottom',
                                 'icon-allow-overlap': true,
-                                "icon-rotation-alignment": "map",
-                                "icon-rotation": {
-                                  type: "categorical",
-                                  property: "angle",  // property name that stores the angle
-                                  stops: [
-                                    [0,   0],        // 0 degrees 
-                                    [30, 30],
-                                    [60, 60],
-                                    [90, 90],       
-                                    [120, 120],
-                                    [150, 150],
-                                    [180, 180]
-                                  ]
-                                }
+                                "icon-rotate": ["get","angle"]
                             }
                         });
                     }
@@ -137,11 +137,11 @@ const generateImage = async ({
 
             });
         });
-    }, series, config.baseUrl, minMax, center, config.mapBoxToken);
+    }, series, config.baseUrl, minMax, center, config.mapBoxToken, svgString);
     //await new Promise(r => setTimeout(r, 3000));
     // Take screenshot of map
     const screenshot = await page.screenshot({ type: 'png' });
-
+    console.log("=== is ok")
     // Save image to file
     const filename = `${uuidv4().replace("-", "_")}.png`;
     fs.writeFileSync(`./public/exports/${filename}`, screenshot);
