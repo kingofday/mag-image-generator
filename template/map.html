@@ -10,6 +10,9 @@
   <script src='./mapbox-gl.js'></script>
   <link href='./mapbox-gl.css' rel='stylesheet' />
   <style>
+    :root{
+      --height:605px;
+    }
     body {
       padding: 0;
       direction: ltr;
@@ -18,35 +21,40 @@
 
     #wrapper {
       position: relative;
-      height: 600px;
-      width: 950px;
+      height: var(--height);
       padding: 0;
       margin: 0;
+      display: flex;
     }
 
     #map {
-      height: 600px;
+      height: var(--height);
       width: 800px;
       margin: 0;
     }
 
-
-    #legends {
+    #legends-wrapper {
+      height: var(--height);
       background-color: #eee;
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      right: 0;
-      width: 150px;
+      display: flex;
+      color: #666;
+    }
+
+    .legends {
+      width: 120px;
+      height: var(--height);
       display: flex;
       flex-direction: column;
       gap: 10px;
       z-index: 9999;
-      color: #666;
-      min-height: 100px;
-      font-size: 12px;
+      max-height: 100%;
+      font-size: 13px;
       font-weight: bold;
       padding: 10px;
+    }
+
+    .legends:not(:first-child) {
+      border-left: solid 1px #ccc;
     }
 
     .legend {
@@ -74,7 +82,7 @@
 <body>
   <div id="wrapper">
     <div id="map"></div>
-    <div id="legends"></div>
+    <div id="legends-wrapper"></div>
   </div>
 </body>
 

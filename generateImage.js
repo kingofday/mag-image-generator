@@ -19,21 +19,30 @@ const generateImage = async ({
         console.log(`${message.text()}`);
     });
     const series = Object.values(data);
+    console.log("colors", JSON.stringify(series.map(x => x.color)))
+    const numberOfLegendsInBox = 23;
+    const legendsBoxCount = Math.ceil(series.length / numberOfLegendsInBox);
     await page.setViewport({
-        width: 950,
-        height: 600
+        width: 800 + (legendsBoxCount * 120),
+        height: 605
     });
     await page.waitForSelector('#wrapper');
-    await page.waitForSelector('#legends');
-    await page.evaluate((series, baseUrl, minMax, center, token, svgString) => {
-        return new Promise((resolve, reject) => {
-            //=== adding legends
+    //=== adding legends
+    await page.evaluate((series, legendsBoxCount, numberOfLegendsInBox) => {
+        const $wrapper = document.querySelector('#legends-wrapper');
+        for (let i = 0; i < legendsBoxCount; i++) {
             let legends = '';
-            for (let sery of series) {
+            for (let j = i * numberOfLegendsInBox; j < ((i + 1) * numberOfLegendsInBox); j++) {
+                if (j === series.length) break;
+                const sery = series[j];
                 legends += `<span class="legend"><span class="legend-symbol" style="background-color:${sery.color};"></span>${sery.label}</span>`
             }
-            const legendsContainer = document.querySelector('#legends');
-            legendsContainer.innerHTML = legends;
+            $wrapper.innerHTML += `<div class="legends">${legends}</div>`;
+        }
+    }, series, legendsBoxCount, numberOfLegendsInBox)
+    //=== adding map
+    await page.evaluate((series, minMax, center, token, svgString) => {
+        return new Promise((resolve, reject) => {
             mapboxgl.accessToken = token;
             const map = new mapboxgl.Map({
                 container: 'map',
@@ -43,24 +52,6 @@ const generateImage = async ({
             });
             map.on('load', async () => {
 
-                await new Promise((imgRes) => {
-                    let img = new Image(20, 20)
-                    img.onload = () => {
-                        map.addImage("antenna", img);
-                        imgRes();
-                    }
-                    img.onerror = err => console.log("load antenna " + JSON.stringify(err));
-                    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`;
-                    // map.loadImage(`${baseUrl}/assets/antenna.svg`, (error, image) => {
-                    //     if (error) console.log(error);
-                    //     map.addImage("antenna", image);
-                    //     imgRes();
-                    // });
-                }, reason => {
-                    console.log(reason)
-                });
-
-                console.log("=== loaded")
                 let idx = 0;
                 let coloredSeriesCount = 0;
                 let allColoredSeriesCount = series.filter(x => !x.icon).length;
@@ -89,25 +80,27 @@ const generateImage = async ({
                     }
                     map.addSource(`source-${idx}`, geoJson);
                     if (sery.icon) {
-                        // map.addLayer({
-                        //     id: `dot-layer-${idx}`,
-                        //     type: 'circle',
-                        //     source: `source-${idx}`,
-                        //     paint: {
-                        //         'circle-color': sery.color,
-                        //         'circle-radius': 3
-                        //     }
-                        // });
+                        await new Promise((imgRes) => {
+                            let img = new Image(20, 20)
+                            img.onload = () => {
+                                map.addImage(`antenna-${idx}`, img);
+                                imgRes();
+                            }
+                            img.onerror = err => console.log("load antenna " + JSON.stringify(err));
+                            img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString.replace("red", sery.color))}`;
+                        }, reason => {
+                            console.log(JSON.stringify(reason))
+                        });
                         map.addLayer({
                             id: `icon-layer-${idx}`,
                             type: 'symbol',
                             source: `source-${idx}`,
                             layout: {
-                                'icon-image': "antenna",
+                                'icon-image': `antenna-${idx}`,
                                 'icon-size': 1,
                                 'icon-anchor': 'bottom',
                                 'icon-allow-overlap': true,
-                                "icon-rotate": ["get","angle"]
+                                "icon-rotate": ["get", "angle"]
                             }
                         });
                     }
@@ -137,11 +130,10 @@ const generateImage = async ({
 
             });
         });
-    }, series, config.baseUrl, minMax, center, config.mapBoxToken, svgString);
+    }, series, minMax, center, config.mapBoxToken, svgString);
     //await new Promise(r => setTimeout(r, 3000));
     // Take screenshot of map
     const screenshot = await page.screenshot({ type: 'png' });
-    console.log("=== is ok")
     // Save image to file
     const filename = `${uuidv4().replace("-", "_")}.png`;
     fs.writeFileSync(`./public/exports/${filename}`, screenshot);
