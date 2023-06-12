@@ -9,17 +9,16 @@ const generateImage = async ({
     minMax,
     center }) => {
     // Launch headless browser
-    const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] });
+    const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage','--allow-file-access-from-files'] });
     const page = await browser.newPage();
-
-    // Load map in headless browser
-    await page.goto(`file://${__dirname}/template/map.html`);
+    //await page.goto(`file://${__dirname}/template/map.html`);
+    const html = fs.readFileSync(`${__dirname}/template/map.html`, 'utf8');
+    await page.setContent(html);
     const svgString = fs.readFileSync(__dirname + "/public/assets/antenna.svg", "utf8");
     page.on('console', message => {
         console.log(`${message.text()}`);
     });
     const series = Object.values(data);
-    console.log("colors", JSON.stringify(series.map(x => x.color)))
     const numberOfLegendsInBox = 23;
     const legendsBoxCount = Math.ceil(series.length / numberOfLegendsInBox);
     await page.setViewport({

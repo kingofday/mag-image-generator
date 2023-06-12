@@ -1,3 +1,5 @@
+const config = require("./config");
+
 const utils = {
     calcCenterAndZoom: function (coordinates) {
         let minLon = coordinates[0][0];
@@ -33,24 +35,25 @@ const utils = {
             const hue = Math.floor(Math.random() * 360);
             const saturation = Math.floor(Math.random() * 80) + 20;
             const luminance = Math.floor(Math.random() * 80) + 20;
-            color = `hsl(${hue}, ${saturation}%, ${luminance}%)`;
+            color = `hsl(${hue}, ${saturation}%, ${luminance}%,${config.antennaOpacity})`;
         } while (this.isColorSimilar(color, previousColors))
         return color;
     },
     isColorSimilar: function (color, previousColors) {
-        const rgbColor = this.hslToRgb(color);
+        const { r, g, b, a } = this.hslToRgba(color);
 
         return previousColors.some(c => {
-            const previousRgb = this.hslToRgb(c);
+            const { r: pr, g: pg, b: pb, a: pa } = this.hslToRgba(c);
 
-            const diff = Math.abs(rgbColor.r - previousRgb.r) +
-                Math.abs(rgbColor.g - previousRgb.g) +
-                Math.abs(rgbColor.b - previousRgb.b);
+            const diff =
+                Math.abs(r - pr) * a +
+                Math.abs(g - pg) * a +
+                Math.abs(b - pb) * a;
 
             return diff > 255 * 0.15;
         });
     },
-    hslToRgb: function (hsl) {
+    hslToRgba: function (hsl) {
         // Expects hsl in 'hsl(120, 50%, 70%)' format
         let h = hsl.slice(hsl.indexOf('hsl(') + 4).split(',')[0] / 360;
         let s = hsl.slice(hsl.indexOf('hsl(') + 4).split(',')[1].slice(0, -1) / 100;
@@ -87,7 +90,7 @@ const utils = {
         g = Math.round((g + m) * 255);
         b = Math.round((b + m) * 255);
 
-        return { r, g, b };
+        return { r, g, b, a: config.antennaOpacity };
     }
 }
 module.exports = utils;
