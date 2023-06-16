@@ -35,7 +35,7 @@ const utils = {
             const hue = Math.floor(Math.random() * 360);
             const saturation = Math.floor(Math.random() * 80) + 20;
             const luminance = Math.floor(Math.random() * 80) + 20;
-            color = `hsl(${hue}, ${saturation}%, ${luminance}%,${config.antennaOpacity})`;
+            color = `hsla(${hue}, ${saturation}%, ${luminance}%,${config.antennaOpacity})`;
         } while (this.isColorSimilar(color, previousColors))
         return color;
     },
@@ -48,16 +48,16 @@ const utils = {
             const diff =
                 Math.abs(r - pr) * a +
                 Math.abs(g - pg) * a +
-                Math.abs(b - pb) * a;
+                Math.abs(b - pb) * pa;
 
-            return diff > 255 * 0.15;
+            return diff > 255 * 0.20;
         });
     },
     hslToRgba: function (hsl) {
         // Expects hsl in 'hsl(120, 50%, 70%)' format
-        let h = hsl.slice(hsl.indexOf('hsl(') + 4).split(',')[0] / 360;
-        let s = hsl.slice(hsl.indexOf('hsl(') + 4).split(',')[1].slice(0, -1) / 100;
-        let l = hsl.slice(hsl.indexOf('hsl(') + 4).split(',')[2].slice(0, -1) / 100;
+        let h = hsl.slice(hsl.indexOf('hsla(') + 4).split(',')[0] / 360;
+        let s = hsl.slice(hsl.indexOf('hsla(') + 4).split(',')[1].slice(0, -1) / 100;
+        let l = hsl.slice(hsl.indexOf('hsla(') + 4).split(',')[2].slice(0, -1) / 100;
 
         let c = (1 - Math.abs(2 * l - 1)) * s,
             x = c * (1 - Math.abs(h % 2 - 1)),

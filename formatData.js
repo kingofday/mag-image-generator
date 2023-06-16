@@ -3,7 +3,8 @@ const utils = require("./utils");
 module.exports = (data) => {
     let series = {};
     const colors = [];
-    for (let d of data) {
+    const cleanedData = data.filter(x => !!x.label);
+    for (let d of cleanedData) {
         let sery = series[d.label]
         if (sery)
             sery.points.push({

@@ -2,6 +2,7 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const config = require('./config');
+const utils = require('./utils');
 //const antenna = require("./public/assets/antenna.svg")
 const generateImage = async ({
     data,
@@ -123,8 +124,8 @@ const generateImage = async ({
                             type: 'circle',
                             source: `source-${idx}`,
                             paint: {
-                                'circle-color': sery.color,
-                                'circle-radius': 2 + (allColoredSeriesCount - coloredSeriesCount - 1) * 1.5,
+                                'circle-color': sery.color,//`rgba(${color.r},${color.g},${color.b},${color.a})`,
+                                'circle-radius': 3 + (allColoredSeriesCount - coloredSeriesCount - 1) * 1.5,
                                 'circle-stroke-width': 1,
                                 'circle-stroke-color': '#ffffff'
                             }
@@ -133,6 +134,7 @@ const generateImage = async ({
                     }
                     idx++;
                 }
+                console.log('=== done')
                 map.fitBounds(minMax, {
                     padding: 50,
                     duration: 0
