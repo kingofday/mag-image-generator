@@ -34,7 +34,7 @@ const generateImage = async ({
             for (let j = i * numberOfLegendsInBox; j < ((i + 1) * numberOfLegendsInBox); j++) {
                 if (j === series.length) break;
                 const sery = series[j];
-                legends += `<span class="legend"><span class="legend-symbol" style="background-color:${sery.color};"></span>${sery.label}</span>`
+                legends += `<span class="legend"><span class="legend-symbol ${sery.cband?"circle":""}" style="${sery.cband?`border-color:${sery.color}`:`background-color:${sery.color};`}"></span>${sery.label}</span>`
             }
             $wrapper.innerHTML += `<div class="legends">${legends}</div>`;
         }
@@ -78,9 +78,23 @@ const generateImage = async ({
                         })
                     }
                     map.addSource(`source-${idx}`, geoJson);
-                    if (sery.icon) {
+                    if(sery.cband)
+                    {
+                        map.addLayer({
+                            id: `cband-layer-${idx}`,
+                            type: 'circle',
+                            source: `source-${idx}`,
+                            paint: {
+                                'circle-radius': 30,  
+                                'circle-color': 'transparent',    
+                                'circle-stroke-width': 3,
+                                'circle-stroke-color': sery.color
+                            }
+                        });
+                    }
+                    else if (sery.icon) {
                         await new Promise((imgRes) => {
-                            let img = new Image(20, 20)
+                            let img = new Image(10, 10)
                             img.onload = () => {
                                 map.addImage(`antenna-${idx}`, img);
                                 imgRes();

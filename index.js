@@ -6,6 +6,7 @@ const utils = require('./utils');
 
 const port = 3000;
 const app = express();
+app.set('timeout', 30000);
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   next();
@@ -13,6 +14,9 @@ app.use((req, res, next) => {
 app.use(express.static('public'));
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
+app.get('/ping', async (req, res) => {
+  res.json("pong")
+})
 app.post('/generate', async (req, res) => {
   try {
     const data = formatData(req.body);
