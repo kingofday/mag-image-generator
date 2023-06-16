@@ -24,7 +24,8 @@ const generateImage = async ({
     const legendsBoxCount = Math.ceil(series.length / numberOfLegendsInBox);
     await page.setViewport({
         width: 800 + (legendsBoxCount * 120),
-        height: 605
+        height: 605,
+        deviceScaleFactor: 4
     });
     await page.waitForSelector('#wrapper');
     //=== adding legends
@@ -124,10 +125,8 @@ const generateImage = async ({
                             type: 'circle',
                             source: `source-${idx}`,
                             paint: {
-                                'circle-color': sery.color,//`rgba(${color.r},${color.g},${color.b},${color.a})`,
-                                'circle-radius': 3 + (allColoredSeriesCount - coloredSeriesCount - 1) * 1.5,
-                                'circle-stroke-width': 1,
-                                'circle-stroke-color': '#ffffff'
+                                'circle-color': sery.color,
+                                'circle-radius': 1 + (allColoredSeriesCount - coloredSeriesCount - 1) * 1.5
                             }
                         });
                         coloredSeriesCount++;
