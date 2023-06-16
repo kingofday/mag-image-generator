@@ -2,8 +2,6 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const config = require('./config');
-const utils = require('./utils');
-//const antenna = require("./public/assets/antenna.svg")
 const generateImage = async ({
     data,
     res,
@@ -133,7 +131,6 @@ const generateImage = async ({
                     }
                     idx++;
                 }
-                console.log('=== done')
                 map.fitBounds(minMax, {
                     padding: 50,
                     duration: 0

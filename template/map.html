@@ -881,6 +881,7 @@
       font-size: 13px;
       font-weight: bold;
       padding: 10px;
+      line-break: anywhere;
     }
 
     .legends:not(:first-child) {
@@ -888,20 +889,22 @@
     }
 
     .legend {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
+      display: block;
     }
 
     .legend-symbol {
       width: 10px;
       height: 10px;
+      display: inline-block;
+      margin-right: 4px;
     }
-    .legend-symbol.circle{
+
+    .legend-symbol.circle {
       border-radius: 50%;
       border-style: solid;
       border-width: 2px;
     }
+
     /* .marker {
       border-radius: 50%;
       border: 2px solid white;
