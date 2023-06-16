@@ -155,7 +155,7 @@ const generateImage = async ({
 
     // Return URL to saved image
     const imageUrl = `${config.baseUrl}/exports/${filename}`;
-    res.json({ imageUrl });
+    res.json(imageUrl);
 
     // Close headless browser
     await browser.close();
