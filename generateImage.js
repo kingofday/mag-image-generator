@@ -96,7 +96,7 @@ const generateImage = async ({
                     }
                     else if (sery.icon) {
                         await new Promise((imgRes) => {
-                            let img = new Image(10, 10)
+                            let img = new Image(8, 8);
                             img.onload = () => {
                                 map.addImage(`antenna-${idx}`, img);
                                 imgRes();
