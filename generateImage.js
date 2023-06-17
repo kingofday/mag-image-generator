@@ -1,27 +1,30 @@
-const puppeteer = require('puppeteer');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const config = require('./config');
-const MAX_PAGES = 2;
-let openPages = [];
+const puppeteer = require('puppeteer');
+let svgString;
+let map;
+let browser;
+let html;
+let ts;
 const generateImage = async ({
-    browser,
     data,
     res,
     minMax,
     center }) => {
+    if (ts)
+        clearTimeout(ts);
+    if (!browser) {
+        browser = await puppeteer.launch({ headless: 'new', protocolTimeout: config.timout });
+    }
     // Launch headless browser
-    const page = await browser.newPage();
-    openPages.push(page);
-    console.log("=== pages:", openPages.length)
-    if (openPages.length > MAX_PAGES) {
-        openPages[0].close();
-        openPages.shift();
-      }
     //await page.goto(`file://${__dirname}/template/map.html`);
-    const html = fs.readFileSync(`${__dirname}/template/map.html`, 'utf8');
+    if (!html)
+        html = fs.readFileSync(`${__dirname}/template/map.html`, 'utf8');
+    const page = await browser.newPage();
     await page.setContent(html);
-    const svgString = fs.readFileSync(__dirname + "/public/assets/antenna.svg", "utf8");
+    if (!svgString)
+        svgString = fs.readFileSync(__dirname + "/public/assets/antenna.svg", "utf8");
     page.on('console', message => {
         console.log(`${message.text()}`);
     });
@@ -48,16 +51,110 @@ const generateImage = async ({
         }
     }, series, legendsBoxCount, numberOfLegendsInBox);
     //=== adding map
-    await page.evaluate((series, minMax, center, token, svgString) => {
-        return new Promise((resolve, reject) => {
+
+    await page.evaluate((map, series, minMax, center, token, svgString) => {
+        return new Promise(async (resolve, reject) => {
             mapboxgl.accessToken = token;
-            const map = new mapboxgl.Map({
-                container: 'map',
-                style: 'mapbox://styles/mapbox/streets-v11',
-                center: center,
-                zoom: 8.5
-            });
-            map.on('load', async () => {
+            if (!map) {
+                map = new mapboxgl.Map({
+                    container: 'map',
+                    style: 'mapbox://styles/mapbox/streets-v11',
+                    center: center,
+                    zoom: 8.5
+                });
+                map.on('load', async () => {
+                    let idx = 0;
+                    let coloredSeriesCount = 0;
+                    let allColoredSeriesCount = series.filter(x => !x.icon).length;
+                    for (let sery of series) {
+                        console.log(`[sery: ${sery.label}, points: ${sery.points.length}]`)
+                        const geoJson = {
+                            type: 'geojson',
+                            data: {
+                                "type": "FeatureCollection",
+                                "features": []
+                            }
+                        };
+                        for (let point of sery.points) {
+                            geoJson.data.features.push({
+                                "type": "Feature",
+                                "properties": {
+                                    label: sery.label,
+                                    icon: sery.icon,
+                                    color: sery.color,
+                                    angle: point.angle
+                                },
+                                "geometry": {
+                                    "type": "Point",
+                                    "coordinates": point.coord
+                                }
+                            })
+                        }
+                        map.addSource(`source-${idx}`, geoJson);
+                        if (sery.cband) {
+                            map.addLayer({
+                                id: `cband-layer-${idx}`,
+                                type: 'circle',
+                                source: `source-${idx}`,
+                                paint: {
+                                    'circle-radius': 30,
+                                    'circle-color': 'transparent',
+                                    'circle-stroke-width': 3,
+                                    'circle-stroke-color': sery.color
+                                }
+                            });
+                        }
+                        else if (sery.icon) {
+                            await new Promise((imgRes) => {
+                                let img = new Image(8, 8);
+                                img.onload = () => {
+                                    map.addImage(`antenna-${idx}`, img);
+                                    imgRes();
+                                }
+                                img.onerror = err => console.log("load antenna " + JSON.stringify(err));
+                                img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString.replace("red", sery.color))}`;
+                            }, reason => {
+                                console.log(JSON.stringify(reason))
+                            });
+                            map.addLayer({
+                                id: `icon-layer-${idx}`,
+                                type: 'symbol',
+                                source: `source-${idx}`,
+                                layout: {
+                                    'icon-image': `antenna-${idx}`,
+                                    'icon-size': 1,
+                                    'icon-anchor': 'bottom',
+                                    'icon-allow-overlap': true,
+                                    "icon-rotate": ["get", "angle"]
+                                }
+                            });
+                        }
+                        else {
+                            map.addLayer({
+                                id: `dot-layer-${idx}`,
+                                type: 'circle',
+                                source: `source-${idx}`,
+                                paint: {
+                                    'circle-color': sery.color,
+                                    'circle-radius': 1 + (allColoredSeriesCount - coloredSeriesCount - 1) * 1.5
+                                }
+                            });
+                            coloredSeriesCount++;
+                        }
+                        idx++;
+                    }
+                    console.log("===> end of request")
+                    map.fitBounds(minMax, {
+                        padding: 50,
+                        duration: 0
+                    })
+                    map.once('idle', () => {
+                        resolve();
+                    });
+
+                });
+            }
+            else {
                 let idx = 0;
                 let coloredSeriesCount = 0;
                 let allColoredSeriesCount = series.filter(x => !x.icon).length;
@@ -143,25 +240,23 @@ const generateImage = async ({
                     padding: 50,
                     duration: 0
                 })
-                map.once('idle', () => {
-                    resolve();
-                });
-
-            });
+                resolve();
+            }
         });
-    }, series, minMax, center, config.mapBoxToken, svgString);
-    //await new Promise(r => setTimeout(r, 3000));
+    }, map, series, minMax, center, config.mapBoxToken, svgString);
     // Take screenshot of map
     const screenshot = await page.screenshot({ type: 'png' });
+    page.close();
     // Save image to file
     const filename = `${uuidv4().replace("-", "_")}.png`;
     fs.writeFileSync(`./public/exports/${filename}`, screenshot);
 
-    // Return URL to saved image
-    const imageUrl = `${config.baseUrl}/exports/${filename}`;
+    const imageUrl = `${config.baseUrl}:${config.port}/exports/${filename}`;
     res.json(imageUrl);
-
-    // Close headless browser
+    ts = setTimeout(async () => {
+        await browser.close();
+        browser = null;
+    }, config.waitingTime);
 
 }
 module.exports = generateImage;
