@@ -3,12 +3,13 @@ const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const config = require('./config');
 const generateImage = async ({
+    browser,
     data,
     res,
     minMax,
     center }) => {
     // Launch headless browser
-    const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage','--allow-file-access-from-files'] });
+
     const page = await browser.newPage();
     //await page.goto(`file://${__dirname}/template/map.html`);
     const html = fs.readFileSync(`${__dirname}/template/map.html`, 'utf8');
@@ -154,6 +155,6 @@ const generateImage = async ({
     res.json(imageUrl);
 
     // Close headless browser
-    await browser.close();
+
 }
 module.exports = generateImage;
