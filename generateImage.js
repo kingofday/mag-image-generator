@@ -19,6 +19,7 @@ const generateImage = async ({
         console.log(`${message.text()}`);
     });
     const series = Object.values(data);
+
     const numberOfLegendsInBox = 23;
     const legendsBoxCount = Math.ceil(series.length / numberOfLegendsInBox);
     await page.setViewport({
@@ -35,7 +36,7 @@ const generateImage = async ({
             for (let j = i * numberOfLegendsInBox; j < ((i + 1) * numberOfLegendsInBox); j++) {
                 if (j === series.length) break;
                 const sery = series[j];
-                legends += `<span class="legend"><span class="legend-symbol ${sery.cband?"circle":""}" style="${sery.cband?`border-color:${sery.color}`:`background-color:${sery.color};`}"></span>${sery.label}</span>`
+                legends += `<span class="legend"><span class="legend-symbol ${sery.cband ? "circle" : ""}" style="${sery.cband ? `border-color:${sery.color}` : `background-color:${sery.color};`}"></span>${sery.label}</span>`
             }
             $wrapper.innerHTML += `<div class="legends">${legends}</div>`;
         }
@@ -51,7 +52,7 @@ const generateImage = async ({
                 zoom: 8.5
             });
             map.on('load', async () => {
-
+                console.log("[sery,counts]", sery.name, sery.points.length)
                 let idx = 0;
                 let coloredSeriesCount = 0;
                 let allColoredSeriesCount = series.filter(x => !x.icon).length;
@@ -79,15 +80,14 @@ const generateImage = async ({
                         })
                     }
                     map.addSource(`source-${idx}`, geoJson);
-                    if(sery.cband)
-                    {
+                    if (sery.cband) {
                         map.addLayer({
                             id: `cband-layer-${idx}`,
                             type: 'circle',
                             source: `source-${idx}`,
                             paint: {
-                                'circle-radius': 30,  
-                                'circle-color': 'transparent',    
+                                'circle-radius': 30,
+                                'circle-color': 'transparent',
                                 'circle-stroke-width': 3,
                                 'circle-stroke-color': sery.color
                             }

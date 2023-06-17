@@ -19,15 +19,14 @@ app.get('/ping', async (req, res) => {
   res.json("pong")
 })
 app.post('/generate', async (req, res) => {
-  if(!browser)
-  {
-    browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage','--allow-file-access-from-files'] });
+  if (!browser) {
+    browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--allow-file-access-from-files'], protocolTimeout: 600000 });
   }
   try {
     const data = formatData(req.body);
     const coords = req.body.map(x => [x.lon ?? x.Lon, x.lat ?? x.Lat]);
     const { minMax, center } = utils.calcCenterAndZoom(coords);
-    await generateImage({ data, res, minMax, center,browser });
+    await generateImage({ data, res, minMax, center, browser });
   }
   catch (e) {
     console.log(e);
