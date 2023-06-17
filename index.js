@@ -20,7 +20,7 @@ app.get('/ping', async (req, res) => {
 })
 app.post('/generate', async (req, res) => {
   if (!browser) {
-    browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--allow-file-access-from-files'], protocolTimeout: 600000 });
+    browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--allow-file-access-from-files'], protocolTimeout: 1000000 });
   }
   try {
     const data = formatData(req.body);

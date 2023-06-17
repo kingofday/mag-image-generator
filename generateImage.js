@@ -2,6 +2,8 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const config = require('./config');
+const MAX_PAGES = 2;
+let openPages = [];
 const generateImage = async ({
     browser,
     data,
@@ -9,8 +11,13 @@ const generateImage = async ({
     minMax,
     center }) => {
     // Launch headless browser
-
     const page = await browser.newPage();
+    openPages.push(page);
+    console.log("=== pages:", openPages.length)
+    if (openPages.length > MAX_PAGES) {
+        openPages[0].close();
+        openPages.shift();
+      }
     //await page.goto(`file://${__dirname}/template/map.html`);
     const html = fs.readFileSync(`${__dirname}/template/map.html`, 'utf8');
     await page.setContent(html);
@@ -19,7 +26,6 @@ const generateImage = async ({
         console.log(`${message.text()}`);
     });
     const series = Object.values(data);
-
     const numberOfLegendsInBox = 23;
     const legendsBoxCount = Math.ceil(series.length / numberOfLegendsInBox);
     await page.setViewport({
@@ -40,7 +46,7 @@ const generateImage = async ({
             }
             $wrapper.innerHTML += `<div class="legends">${legends}</div>`;
         }
-    }, series, legendsBoxCount, numberOfLegendsInBox)
+    }, series, legendsBoxCount, numberOfLegendsInBox);
     //=== adding map
     await page.evaluate((series, minMax, center, token, svgString) => {
         return new Promise((resolve, reject) => {
@@ -52,11 +58,11 @@ const generateImage = async ({
                 zoom: 8.5
             });
             map.on('load', async () => {
-                console.log("[sery,counts]", sery.name, sery.points.length)
                 let idx = 0;
                 let coloredSeriesCount = 0;
                 let allColoredSeriesCount = series.filter(x => !x.icon).length;
                 for (let sery of series) {
+                    console.log(`[sery: ${sery.label}, points: ${sery.points.length}]`)
                     const geoJson = {
                         type: 'geojson',
                         data: {
@@ -132,6 +138,7 @@ const generateImage = async ({
                     }
                     idx++;
                 }
+                console.log("===> end of request")
                 map.fitBounds(minMax, {
                     padding: 50,
                     duration: 0
