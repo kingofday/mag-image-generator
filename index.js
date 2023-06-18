@@ -5,7 +5,7 @@ const formatData = require('./formatData');
 const utils = require('./utils');
 const config = require('./config');
 const app = express();
-app.set('timeout', 120000);
+app.set('timeout', config.timout);
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   next();

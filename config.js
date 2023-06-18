@@ -1,7 +1,7 @@
 module.exports = {
     iconOpacity: 0.4,
-    timout: 10000,
-    waitingTime: 120000,
+    timout: 120000,
+    waitingTime: 300000,
     baseUrl: "http://localhost",
     port: 3000,
     maxNumberOfLegendInColumn: 23,
