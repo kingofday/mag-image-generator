@@ -41,18 +41,24 @@ const generateImage = async ({
     });
     await page.waitForSelector('#wrapper');
     //=== adding legends
-    await page.evaluate((series, legendsBoxCount, numberOfLegendsInBox) => {
+    await page.evaluate((series, maxNumberOfLegendInColumn, maxLegendCharLengthInARow) => {
         const $wrapper = document.querySelector('#legends-wrapper');
-        for (let i = 0; i < legendsBoxCount; i++) {
-            let legends = '';
-            for (let j = i * numberOfLegendsInBox; j < ((i + 1) * numberOfLegendsInBox); j++) {
-                if (j === series.length) break;
-                const sery = series[j];
-                legends += `<span class="legend"><span class="legend-symbol ${sery.cband ? "circle" : ""}" style="${sery.cband ? `border-color:${sery.color}` : `background-color:${sery.color};`}"></span>${sery.label}</span>`
+        let sum = 0;
+        let legends = '';
+        let col = 1;
+        for (let i = 0; i < series.length; i++) {
+            const sery = series[i];
+            let rows = Math.ceil(sery.label.length / maxLegendCharLengthInARow);
+            legends += `<span class="legend"><span class="legend-symbol ${sery.cband ? "circle" : ""}" style="${sery.cband ? `border-color:${sery.color}` : `background-color:${sery.color};`}"></span>${sery.label}</span>`;
+            if ((sum + rows) > maxNumberOfLegendInColumn || i === series.length - 1) {
+                $wrapper.innerHTML += `<div class="legends">${legends}</div>`;
+                legends = '';
+                col++;
+                sum = 0
             }
-            $wrapper.innerHTML += `<div class="legends">${legends}</div>`;
+            sum += rows;
         }
-    }, series, legendsBoxCount, config.maxNumberOfLegendInColumn);
+    }, series, config.maxNumberOfLegendInColumn, config.maxLegendCharLengthInARow);
     //=== adding map
 
     await page.evaluate((map, series, minMax, center, token, svgString, equalRadius) => {
@@ -93,6 +99,7 @@ const generateImage = async ({
                         })
                     }
                     map.addSource(`source-${idx}`, geoJson);
+                    console.log("sery is", JSON.stringify(sery))
                     if (sery.cband) {
                         map.addLayer({
                             id: `cband-layer-${idx}`,
