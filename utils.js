@@ -35,7 +35,7 @@ const utils = {
             const hue = Math.floor(Math.random() * 360);
             const saturation = Math.floor(Math.random() * 80) + 20;
             const luminance = Math.floor(Math.random() * 80) + 20;
-            color = `hsla(${hue}, ${saturation}%, ${luminance}%,${config.antennaOpacity})`;
+            color = `hsla(${hue}, ${saturation}%, ${luminance}%,${config.iconOpacity})`;
         } while (this.isColorSimilar(color, previousColors))
         return color;
     },
@@ -90,7 +90,7 @@ const utils = {
         g = Math.round((g + m) * 255);
         b = Math.round((b + m) * 255);
 
-        return { r, g, b, a: config.antennaOpacity };
+        return { r, g, b, a: config.iconOpacity };
     }
 }
 module.exports = utils;

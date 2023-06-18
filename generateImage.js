@@ -29,8 +29,11 @@ const generateImage = async ({
         console.log(`${message.text()}`);
     });
     const series = Object.values(data);
-    const numberOfLegendsInBox = 23;
-    const legendsBoxCount = Math.ceil(series.length / numberOfLegendsInBox);
+    const numberOfLegendRows = series.reduce((acc, x) => {
+        let rows = Math.ceil(x.label.length / config.maxLegendCharLengthInARow);
+        return acc + rows;
+    }, 0)
+    const legendsBoxCount = Math.ceil(numberOfLegendRows / config.maxNumberOfLegendInColumn);
     await page.setViewport({
         width: 800 + (legendsBoxCount * 120),
         height: 605,
@@ -49,117 +52,24 @@ const generateImage = async ({
             }
             $wrapper.innerHTML += `<div class="legends">${legends}</div>`;
         }
-    }, series, legendsBoxCount, numberOfLegendsInBox);
+    }, series, legendsBoxCount, config.maxNumberOfLegendInColumn);
     //=== adding map
 
-    await page.evaluate((map, series, minMax, center, token, svgString) => {
+    await page.evaluate((map, series, minMax, center, token, svgString, equalRadius) => {
         return new Promise(async (resolve, reject) => {
             mapboxgl.accessToken = token;
-            if (!map) {
-                map = new mapboxgl.Map({
-                    container: 'map',
-                    style: 'mapbox://styles/mapbox/streets-v11',
-                    center: center,
-                    zoom: 8.5
-                });
-                map.on('load', async () => {
-                    let idx = 0;
-                    let coloredSeriesCount = 0;
-                    let allColoredSeriesCount = series.filter(x => !x.icon).length;
-                    for (let sery of series) {
-                        console.log(`[sery: ${sery.label}, points: ${sery.points.length}]`)
-                        const geoJson = {
-                            type: 'geojson',
-                            data: {
-                                "type": "FeatureCollection",
-                                "features": []
-                            }
-                        };
-                        for (let point of sery.points) {
-                            geoJson.data.features.push({
-                                "type": "Feature",
-                                "properties": {
-                                    label: sery.label,
-                                    icon: sery.icon,
-                                    color: sery.color,
-                                    angle: point.angle
-                                },
-                                "geometry": {
-                                    "type": "Point",
-                                    "coordinates": point.coord
-                                }
-                            })
-                        }
-                        map.addSource(`source-${idx}`, geoJson);
-                        if (sery.cband) {
-                            map.addLayer({
-                                id: `cband-layer-${idx}`,
-                                type: 'circle',
-                                source: `source-${idx}`,
-                                paint: {
-                                    'circle-radius': 30,
-                                    'circle-color': 'transparent',
-                                    'circle-stroke-width': 3,
-                                    'circle-stroke-color': sery.color
-                                }
-                            });
-                        }
-                        else if (sery.icon) {
-                            await new Promise((imgRes) => {
-                                let img = new Image(8, 8);
-                                img.onload = () => {
-                                    map.addImage(`antenna-${idx}`, img);
-                                    imgRes();
-                                }
-                                img.onerror = err => console.log("load antenna " + JSON.stringify(err));
-                                img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString.replace("red", sery.color))}`;
-                            }, reason => {
-                                console.log(JSON.stringify(reason))
-                            });
-                            map.addLayer({
-                                id: `icon-layer-${idx}`,
-                                type: 'symbol',
-                                source: `source-${idx}`,
-                                layout: {
-                                    'icon-image': `antenna-${idx}`,
-                                    'icon-size': 1,
-                                    'icon-anchor': 'bottom',
-                                    'icon-allow-overlap': true,
-                                    "icon-rotate": ["get", "angle"]
-                                }
-                            });
-                        }
-                        else {
-                            map.addLayer({
-                                id: `dot-layer-${idx}`,
-                                type: 'circle',
-                                source: `source-${idx}`,
-                                paint: {
-                                    'circle-color': sery.color,
-                                    'circle-radius': 1 + (allColoredSeriesCount - coloredSeriesCount - 1) * 1.5
-                                }
-                            });
-                            coloredSeriesCount++;
-                        }
-                        idx++;
-                    }
-                    console.log("===> end of request")
-                    map.fitBounds(minMax, {
-                        padding: 50,
-                        duration: 0
-                    })
-                    map.once('idle', () => {
-                        resolve();
-                    });
-
-                });
-            }
-            else {
+            map = new mapboxgl.Map({
+                container: 'map',
+                style: 'mapbox://styles/mapbox/streets-v11',
+                center: center,
+                zoom: 8.5
+            });
+            map.on('load', async () => {
                 let idx = 0;
                 let coloredSeriesCount = 0;
                 let allColoredSeriesCount = series.filter(x => !x.icon).length;
                 for (let sery of series) {
-                    console.log(`[sery: ${sery.label}, points: ${sery.points.length}]`)
+                    console.log(`[sery: ${sery.label}, points: ${sery.points.length}, color:${sery.color}]`)
                     const geoJson = {
                         type: 'geojson',
                         data: {
@@ -228,7 +138,7 @@ const generateImage = async ({
                             source: `source-${idx}`,
                             paint: {
                                 'circle-color': sery.color,
-                                'circle-radius': 1 + (allColoredSeriesCount - coloredSeriesCount - 1) * 1.5
+                                'circle-radius': equalRadius ? 2 : 1 + (allColoredSeriesCount - coloredSeriesCount - 1) * 1.5
                             }
                         });
                         coloredSeriesCount++;
@@ -240,10 +150,13 @@ const generateImage = async ({
                     padding: 50,
                     duration: 0
                 })
-                resolve();
-            }
+                map.once('idle', () => {
+                    resolve();
+                });
+
+            });
         });
-    }, map, series, minMax, center, config.mapBoxToken, svgString);
+    }, map, series, minMax, center, config.mapBoxToken, svgString, series.length >= config.normalRadiusSeriseLimit);
     // Take screenshot of map
     const screenshot = await page.screenshot({ type: 'png' });
     page.close();
