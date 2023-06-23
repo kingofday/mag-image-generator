@@ -61,7 +61,7 @@ const generateImage = async ({
     }, series, config.maxNumberOfLegendInColumn, config.maxLegendCharLengthInARow);
     //=== adding map
 
-    await page.evaluate((map, series, minMax, center, token, svgString, equalRadius) => {
+    await page.evaluate((map, series, minMax, center, token, svgString, equalRadius, clusteringThreashold) => {
         return new Promise(async (resolve, reject) => {
             mapboxgl.accessToken = token;
             map = new mapboxgl.Map({
@@ -71,99 +71,124 @@ const generateImage = async ({
                 zoom: 8.5
             });
             map.on('load', async () => {
-                let idx = 0;
-                let coloredSeriesCount = 0;
-                let allColoredSeriesCount = series.filter(x => !x.icon).length;
-                for (let sery of series) {
-                    console.log(`[sery: ${sery.label}, points: ${sery.points.length}, color:${sery.color}]`)
-                    const geoJson = {
-                        type: 'geojson',
-                        data: {
-                            "type": "FeatureCollection",
-                            "features": []
+                try {
+                    let idx = 0;
+                    let coloredSeriesCount = 0;
+                    let allColoredSeriesCount = series.filter(x => !x.icon).length;
+                    console.log("===> start processing")
+                    for (let sery of series) {
+                        const clusteringEnabled = sery.points.length > clusteringThreashold;
+                        const geoJson = {
+                            type: 'geojson',
+                            cluster: clusteringEnabled,
+                            clusterMaxZoom: 10,
+                            clusterRadius: 5,
+                            data: {
+                                "type": "FeatureCollection",
+                                "features": []
+                            }
+                        };
+                        for (let point of sery.points) {
+                            geoJson.data.features.push({
+                                "type": "Feature",
+                                "properties": {
+                                    label: sery.label,
+                                    icon: sery.icon,
+                                    color: sery.color,
+                                    angle: point.angle
+                                },
+                                "geometry": {
+                                    "type": "Point",
+                                    "coordinates": point.coord
+                                }
+                            })
                         }
-                    };
-                    for (let point of sery.points) {
-                        geoJson.data.features.push({
-                            "type": "Feature",
-                            "properties": {
-                                label: sery.label,
-                                icon: sery.icon,
-                                color: sery.color,
-                                angle: point.angle
-                            },
-                            "geometry": {
-                                "type": "Point",
-                                "coordinates": point.coord
-                            }
-                        })
+                        map.addSource(`source-${idx}`, geoJson);
+                         if (sery.icon) {
+                            await new Promise((imgRes) => {
+                                let img = new Image(8, 8);
+                                img.onload = () => {
+                                    map.addImage(`antenna-${idx}`, img);
+                                    imgRes();
+                                }
+                                img.onerror = err => console.log("load antenna " + JSON.stringify(err));
+                                img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString.replace("red", sery.color))}`;
+                            }, reason => {
+                                console.log(JSON.stringify(reason))
+                            });
+                            map.addLayer({
+                                id: `icon-layer-${idx}`,
+                                type: 'symbol',
+                                source: `source-${idx}`,
+                                layout: {
+                                    'icon-image': `antenna-${idx}`,
+                                    'icon-size': 1,
+                                    'icon-anchor': 'bottom',
+                                    'icon-allow-overlap': true,
+                                    "icon-rotate": ["get", "angle"]
+                                }
+                            });
+                        }
+                        else {
+                            map.addLayer({
+                                id: `dot-layer-${idx}`,
+                                type: 'circle',
+                                source: `source-${idx}`,
+                                filter: clusteringEnabled ? ["has", "point_count"] : [],
+                                paint: {
+                                    'circle-color': sery.color,
+                                    'circle-radius': equalRadius ? 2 : (clusteringEnabled?3:1) + (allColoredSeriesCount - coloredSeriesCount - 1) * 1.5
+                                }
+                            });
+                            if (clusteringEnabled)
+                                map.addLayer({
+                                    id: `dot-layer-${idx}`,
+                                    type: 'circle',
+                                    source: `source-${idx}`,
+                                    filter: ["!", ["has", "point_count"]],
+                                    paint: {
+                                        'circle-color': sery.color,
+                                        'circle-radius': equalRadius ? 2 : 1 + (allColoredSeriesCount - coloredSeriesCount - 1) * 1.5
+                                    }
+                                });
+                            coloredSeriesCount++;
+                        }
+                        idx++;
+                        console.log(`[sery: ${sery.label}, points: ${sery.points.length}, color:${sery.color}]`)
                     }
-                    map.addSource(`source-${idx}`, geoJson);
-                    console.log("sery is", JSON.stringify(sery))
-                    if (sery.cband) {
-                        map.addLayer({
-                            id: `cband-layer-${idx}`,
-                            type: 'circle',
-                            source: `source-${idx}`,
-                            paint: {
-                                'circle-radius': 30,
-                                'circle-color': 'transparent',
-                                'circle-stroke-width': 3,
-                                'circle-stroke-color': sery.color
-                            }
-                        });
-                    }
-                    else if (sery.icon) {
-                        await new Promise((imgRes) => {
-                            let img = new Image(8, 8);
-                            img.onload = () => {
-                                map.addImage(`antenna-${idx}`, img);
-                                imgRes();
-                            }
-                            img.onerror = err => console.log("load antenna " + JSON.stringify(err));
-                            img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString.replace("red", sery.color))}`;
-                        }, reason => {
-                            console.log(JSON.stringify(reason))
-                        });
-                        map.addLayer({
-                            id: `icon-layer-${idx}`,
-                            type: 'symbol',
-                            source: `source-${idx}`,
-                            layout: {
-                                'icon-image': `antenna-${idx}`,
-                                'icon-size': 1,
-                                'icon-anchor': 'bottom',
-                                'icon-allow-overlap': true,
-                                "icon-rotate": ["get", "angle"]
-                            }
-                        });
-                    }
-                    else {
-                        map.addLayer({
-                            id: `dot-layer-${idx}`,
-                            type: 'circle',
-                            source: `source-${idx}`,
-                            paint: {
-                                'circle-color': sery.color,
-                                'circle-radius': equalRadius ? 2 : 1 + (allColoredSeriesCount - coloredSeriesCount - 1) * 1.5
-                            }
-                        });
-                        coloredSeriesCount++;
-                    }
-                    idx++;
+                    console.log("===> end of processing")
+                    map.fitBounds(minMax, {
+                        padding: 50,
+                        duration: 0
+                    })
+                    map.once('idle', () => {
+                        console.log("===> map loaded")
+                        resolve();
+                    });
                 }
-                console.log("===> end of request")
-                map.fitBounds(minMax, {
-                    padding: 50,
-                    duration: 0
-                })
-                map.once('idle', () => {
+                catch (e) {
+                    console.log("error is: ",JSON.stringify(e))
                     resolve();
-                });
+                }
+                // map.on('render', function() {
 
+                //     if (!map.loaded()) {
+                //       setTimeout(()=>resolve(),4000)
+                //     } else {
+                //         console.log("the end")
+                //         resolve();
+                //     }
+                //   });
             });
         });
-    }, map, series, minMax, center, config.mapBoxToken, svgString, series.length >= config.normalRadiusSeriseLimit);
+    }, map,
+        series,
+        minMax,
+        center,
+        config.mapBoxToken,
+        svgString,
+        series.length >= config.normalRadiusSeriseLimit,
+        config.clusteringThreashold);
     // Take screenshot of map
     const screenshot = await page.screenshot({ type: 'png' });
     page.close();

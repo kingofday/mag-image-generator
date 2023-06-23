@@ -11,18 +11,27 @@ app.use((req, res, next) => {
   next();
 });
 app.use(express.static('public'));
-app.use(express.json({ limit: '100mb' }));
-app.use(express.urlencoded({ limit: '100mb', extended: true }));
+app.use(express.json({ limit: config.requstLimit }));
+app.use(express.urlencoded({ limit: config.requstLimit, extended: true }));
 
 app.get('/ping', async (req, res) => {
   res.json("pong")
 })
 app.post('/generate', async (req, res) => {
   try {
-    const data = formatData(req.body);
-    const coords = req.body.map(x => [x.lon ?? x.Lon, x.lat ?? x.Lat]);
-    const { minMax, center } = utils.calcCenterAndZoom(coords);
-    await generateImage({ data, res, minMax, center });
+    const {series,center,minMax} = formatData(req.body);
+
+    // const { minMax, center } = utils.calcCenterAndZoom({
+    //   data: data.data,
+    //   latIdx,
+    //   lonIdx
+    // });
+    await generateImage({
+      data: series,
+      res,
+      minMax,
+      center
+    });
   }
   catch (e) {
     console.log(e);
