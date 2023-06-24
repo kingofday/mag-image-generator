@@ -82,7 +82,7 @@ const generateImage = async ({
                             type: 'geojson',
                             cluster: clusteringEnabled,
                             clusterMaxZoom: 10,
-                            clusterRadius: 5,
+                            clusterRadius: 2,
                             data: {
                                 "type": "FeatureCollection",
                                 "features": []
@@ -104,7 +104,7 @@ const generateImage = async ({
                             })
                         }
                         map.addSource(`source-${idx}`, geoJson);
-                         if (sery.icon) {
+                        if (sery.icon) {
                             await new Promise((imgRes) => {
                                 let img = new Image(8, 8);
                                 img.onload = () => {
@@ -137,7 +137,7 @@ const generateImage = async ({
                                 filter: clusteringEnabled ? ["has", "point_count"] : [],
                                 paint: {
                                     'circle-color': sery.color,
-                                    'circle-radius': equalRadius ? 2 : (clusteringEnabled?3:1) + (allColoredSeriesCount - coloredSeriesCount - 1) * 1.5
+                                    'circle-radius': equalRadius ? 2 : (clusteringEnabled ? 3 : 1) + (allColoredSeriesCount - coloredSeriesCount - 1) * 1.5
                                 }
                             });
                             if (clusteringEnabled)
@@ -167,7 +167,7 @@ const generateImage = async ({
                     });
                 }
                 catch (e) {
-                    console.log("error is: ",JSON.stringify(e))
+                    console.log("error is: ", JSON.stringify(e))
                     resolve();
                 }
                 // map.on('render', function() {
