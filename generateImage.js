@@ -63,31 +63,34 @@ const generateImage = async ({
 
     await page.evaluate((map, series, minMax, center, token, svgString, equalRadius, clusteringThreashold) => {
         return new Promise(async (resolve, reject) => {
-            mapboxgl.accessToken = token;
-            map = new mapboxgl.Map({
-                container: 'map',
-                style: 'mapbox://styles/mapbox/streets-v11',
-                center: center,
-                zoom: 8.5
-            });
-            map.on('load', async () => {
-                try {
+            try {
+                mapboxgl.accessToken = token;
+                map = new mapboxgl.Map({
+                    container: 'map',
+                    style: 'mapbox://styles/mapbox/streets-v11',
+                    center: center,
+                    zoom: 8.5
+                });
+                map.on('load', async () => {
+
                     let idx = 0;
                     let coloredSeriesCount = 0;
                     let allColoredSeriesCount = series.filter(x => !x.icon).length;
-                    console.log("===> start processing")
+                    console.log("===> start of processing")
                     for (let sery of series) {
                         const clusteringEnabled = sery.points.length > clusteringThreashold;
                         const geoJson = {
                             type: 'geojson',
-                            cluster: clusteringEnabled,
-                            clusterMaxZoom: 10,
-                            clusterRadius: 2,
                             data: {
                                 "type": "FeatureCollection",
                                 "features": []
                             }
                         };
+                        if (clusteringEnabled) {
+                            geoJson.cluster = true;
+                            geoJson.clusterMaxZoom = 10;
+                            geoJson.clusterRadius = 2;
+                        }
                         for (let point of sery.points) {
                             geoJson.data.features.push({
                                 "type": "Feature",
@@ -130,16 +133,18 @@ const generateImage = async ({
                             });
                         }
                         else {
-                            map.addLayer({
+                            let layerOptions = {
                                 id: `dot-layer-${idx}`,
                                 type: 'circle',
                                 source: `source-${idx}`,
-                                filter: clusteringEnabled ? ["has", "point_count"] : [],
                                 paint: {
                                     'circle-color': sery.color,
                                     'circle-radius': equalRadius ? 2 : (clusteringEnabled ? 3 : 1) + (allColoredSeriesCount - coloredSeriesCount - 1) * 1.5
                                 }
-                            });
+                            };
+                            if (clusteringEnabled)
+                                layerOptions.filter = ["has", "point_count"]
+                            map.addLayer(layerOptions);
                             if (clusteringEnabled)
                                 map.addLayer({
                                     id: `dot-layer-${idx}`,
@@ -156,30 +161,20 @@ const generateImage = async ({
                         idx++;
                         console.log(`[sery: ${sery.label}, points: ${sery.points.length}, color:${sery.color}]`)
                     }
-                    console.log("===> end of processing")
+                    console.log("===> end of processing...")
                     map.fitBounds(minMax, {
                         padding: 50,
                         duration: 0
                     })
                     map.once('idle', () => {
-                        console.log("===> map loaded")
                         resolve();
                     });
-                }
-                catch (e) {
-                    console.log("error is: ", JSON.stringify(e))
-                    resolve();
-                }
-                // map.on('render', function() {
-
-                //     if (!map.loaded()) {
-                //       setTimeout(()=>resolve(),4000)
-                //     } else {
-                //         console.log("the end")
-                //         resolve();
-                //     }
-                //   });
-            });
+                });
+            }
+            catch (e) {
+                console.log("error is: ", JSON.stringify(e))
+                resolve();
+            }
         });
     }, map,
         series,
